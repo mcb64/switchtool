@@ -67,6 +67,7 @@ class Switch(netconfig.host.Host):
     _types = {'arista'     : survey.AristaSurveyer,
               'brocade'    : survey.BrocadeSurveyer,
               'brocade_old': survey.BrocadeSurveyer,
+              'ruckus'     : survey.RuckusSurveyer,
               'cisco'      : survey.CiscoSurveyer,
              }
     def __init__(self,switch_name,user='admin',pw=None,

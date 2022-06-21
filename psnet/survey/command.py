@@ -187,6 +187,26 @@ class BrocadeCommandRunner(CommandRunner):
             # if this timedout then its likely exited
             pass
 
+class RuckusCommandRunner(CommandRunner):
+    def __init__(self, user, pw, port, cmds, timeout=None, private_key=False):
+        super(RuckusCommandRunner, self).__init__(user, pw, port, cmds, '^SSH@%s(?:\([\w-]*\))?%s(?P<cmd>.*)', '\n', timeout, private_key)
+
+'''
+    # This doesn't seem to work.  If we do this, we freeze during the output.
+    def enter(self):
+        self.exec_cmd('skip', False)
+'''
+
+    def exit(self):
+        self.chan.send('exit%s'%self.terminator)
+        # set a timeout incase switch never responds after first exit
+        self.chan.settimeout(0.25)
+        try:
+            if not self.chan.exit_status_ready():
+                self.chan.send('exit%s'%self.terminator)
+        except socket.timeout:
+            # if this timedout then its likely exited
+            pass
 
 def parse_cli():
     # Create the parser

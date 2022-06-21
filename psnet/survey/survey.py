@@ -99,6 +99,38 @@ class BrocadeSurveyer(Surveyer):
         return vlan_info
 
 
+class RuckusSurveyer(Surveyer):
+
+    _vlan_format = re.compile(r'PORT-VLAN ([\d]+), Name [\D]+,.+?\r\n(.+?)Monitoring',re.DOTALL)
+    _port_format = re.compile(r'Untagged Ports: \(U(\d+)/M(\d+)\)(.+)\r') 
+    _mac_format  = re.compile(r'([\S]{14})[\s]+?([\S]+)[\s]+?Dynamic')  
+    _cmd_runner  = command.RuckusCommandRunner 
+
+    def __init__(self,user,pw,port=22,timeout=None):
+        super(RuckusSurveyer,self).__init__(user,pw,port=port,
+                                           timeout=timeout)
+    
+    def show_vlan(self,host,vlan_no=None):
+        ''' Python 2.7 :  for vlan,port_info in vlan_info.iteritems(): '''
+        ''' Python 3.5 :  for vlan,port_info in vlan_info.items():     '''
+        """
+        Create a dictionary of each VLAN with untagged ports.
+
+        An extra complication is added because of the way the ports are
+        displayed by the Brocade.
+        """
+        vlan_info = super(RuckusSurveyer,self).show_vlan(host,vlan_no=vlan_no)
+        #for vlan,port_info in vlan_info.iteritems():
+        for vlan,port_info in vlan_info.items():
+            full_ports = []
+            if port_info:
+                for line in port_info:
+                    stack  = list(line[:2])
+                    for port in re.findall(r'([\d]+)',line[2]):
+                        full_ports.append('/'.join(stack+[port])) 
+            vlan_info[vlan] = full_ports
+        return vlan_info
+
 class CiscoSurveyer(Surveyer):
 
     _vlan_format = re.compile(r'([\d]+).+active[\s]+(.+)')
