@@ -48,7 +48,7 @@ class Host(object):
                                 'please use the Host Group object'.format(name))
             return None
         else:
-            return Host(name,host_info.values()[0])
+            return Host(name,list(host_info.values())[0])
 
 
     def ping(self,wait=1):
