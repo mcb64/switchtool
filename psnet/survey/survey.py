@@ -12,9 +12,10 @@ class Surveyer(object):
     _port_format = None
     _cmd_runner  = None
     
-    def __init__(self,user,pw,port=None,timeout=None):
+    def __init__(self,user,pw,enablepw,port=None,timeout=None):
         self.user    = user
         self.pw      = pw
+        self.enablepw= enablepw
         self.port    = port
         self.timeout = timeout
 
@@ -33,7 +34,7 @@ class Surveyer(object):
         if vlan_no:
             cmd[0] = '{:} {:}'.format(cmd[0].rstrip('\n'),vlan_no) 
         
-        cmdr  = self._cmd_runner(self.user,self.pw,self.port,
+        cmdr  = self._cmd_runner(self.user,self.pw,self.enablepw,self.port,
                                     cmd,timeout=self.timeout)
         #Parse output
         out_code,raw_vlan = cmdr.run(host)
@@ -56,6 +57,7 @@ class Surveyer(object):
         
         cmdr     = self._cmd_runner(self.user,
                                     self.pw,
+                                    self.enablepw,
                                     self.port,
                                     cmd,timeout=self.timeout)
         out_code,raw_mac = cmdr.run(host)
@@ -72,8 +74,8 @@ class BrocadeSurveyer(Surveyer):
     _mac_format  = re.compile(r'([\S]{14})[\s]+?([\S]+)[\s]+?Dynamic')  
     _cmd_runner  = command.BrocadeCommandRunner 
     
-    def __init__(self,user,pw,port=22,timeout=None):
-        super(BrocadeSurveyer,self).__init__(user,pw,port=port,
+    def __init__(self,user,pw,enablepw,port=22,timeout=None):
+        super(BrocadeSurveyer,self).__init__(user,pw,enablepw,port=port,
                                              timeout=timeout)
    
     
@@ -106,8 +108,8 @@ class RuckusSurveyer(Surveyer):
     _mac_format  = re.compile(r'([\S]{14})[\s]+?([\S]+)[\s]+?Dynamic')  
     _cmd_runner  = command.RuckusCommandRunner 
 
-    def __init__(self,user,pw,port=22,timeout=None):
-        super(RuckusSurveyer,self).__init__(user,pw,port=port,
+    def __init__(self,user,pw,enablepw,port=22,timeout=None):
+        super(RuckusSurveyer,self).__init__(user,pw,enablepw,port=port,
                                            timeout=timeout)
     
     def show_vlan(self,host,vlan_no=None):
@@ -138,8 +140,8 @@ class CiscoSurveyer(Surveyer):
     _mac_format  = re.compile(r' [\d]{3}[\s]+?(\S+)[\s]+?DYNAMIC[\s]+(.+)')
     _cmd_runner  = command.CiscoCommandRunner 
 
-    def __init__(self,user,pw,port=22,timeout=None):
-        super(CiscoSurveyer,self).__init__(user,pw,port=port,
+    def __init__(self,user,pw,enablepw,port=22,timeout=None):
+        super(CiscoSurveyer,self).__init__(user,pw,enablepw,port=port,
                                            timeout=timeout)
 
 
@@ -150,6 +152,6 @@ class AristaSurveyer(Surveyer):
     _mac_format  = re.compile(r' [\d]{3}[\s]+?(\S+)[\s]+?DYNAMIC[\s]+(.+)')
     _cmd_runner  = command.AristaCommandRunner 
 
-    def __init__(self,user,pw,port=22,timeout=None):
-        super(CiscoSurveyer,self).__init__(user,pw,port=port,
+    def __init__(self,user,pw,enablepw,port=22,timeout=None):
+        super(CiscoSurveyer,self).__init__(user,pw,enablepw,port=port,
                                            timeout=timeout)

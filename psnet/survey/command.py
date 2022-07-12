@@ -18,7 +18,7 @@ LOG = logging.getLogger(LOG_CONF.get('logger_name', __name__))
 
 
 class TelnetCommandRunner(object):
-    def __init__(self, user, pw, port, cmds, timeout=None):
+    def __init__(self, user, pw, enablepw, port, cmds, timeout=None):
         self.user = user
         self.pw = pw
         self.port = port
@@ -68,10 +68,10 @@ class TelnetCommandRunner(object):
             self.tn.close()
 
 class CommandRunner(object):
-
-    def __init__(self, user, pw, port, cmds, prompt, terminator, timeout=None, private_key=False):
+    def __init__(self, user, pw, enablepw, port, cmds, prompt, terminator, timeout=None, private_key=False):
         self.user = user
         self.pw = pw
+        self.enablepw = enablepw
         self.port = port
         self.timeout = timeout
         self.private_key = private_key
@@ -96,11 +96,12 @@ class CommandRunner(object):
     def exit(self):
         self.exec_cmd('exit', False)
 
-    def exec_cmd(self, cmd, keepOutput=True):
+    def exec_cmd(self, cmd, keepOutput=True, keepMode=False):
         seen_echo = False
         seen_prompt = False
         self.chan.send('%s%s'%(cmd, self.terminator))
         output = ''
+        mode = ''
         
         while not seen_echo:
             if self.chan.recv_ready():
@@ -108,9 +109,12 @@ class CommandRunner(object):
                 if keepOutput:
                     prompt_match = self.prompt_pattern.match(line.rstrip())
                     if prompt_match and prompt_match.group('cmd') == cmd:
+                        mode = prompt_match.group('mode')
                         seen_echo = True
                 else:
-                    if self.prompt_pattern.match(line):
+                    prompt_match = self.prompt_pattern.match(line)
+                    if prompt_match:
+                        mode = prompt_match.group('mode')
                         seen_echo = True
 
         if keepOutput:
@@ -123,23 +127,37 @@ class CommandRunner(object):
                     if page_cont:
                         self.chan.send(' %s'%self.terminator)
                         output += '%s\n'%page_cont.group('data')
-                    elif self.prompt_pattern.match(line):
-                        seen_prompt = True
                     else:
-                        output += line
+                        prompt_match = self.prompt_pattern.match(line)
+                        if prompt_match:
+                            mode = prompt_match.group('mode')
+                            seen_prompt = True
+                        else:
+                            output += line
         if keepOutput:
             return output
+        if keepMode:
+            return mode
 
     def run(self, host):
         """
         Runs the command on the passed list of hosts
         """
-        self.prompt_pattern = re.compile(self.prompt_temp % (host, '#'))
+        # Sigh... now we want to actually see if our prompt is '>' or '#' and enable if needed!
+        self.prompt_pattern = re.compile(self.prompt_temp % (host, '(?P<mode>[#>])'))
         output = ''
 
+        # The connect seems to fail a lot.  Let's see if we can catch this at all
+        # and retry?
+        for i in range(5):
+            try:
+                self.ssh.connect(host, self.port, self.user, self.pw,
+                                 timeout=self.timeout,look_for_keys=False)
+                break
+            except:
+                print("SSH connect failed, retry %d!" % i)
+
         try:
-            self.ssh.connect(host, self.port, self.user, self.pw,
-                             timeout=self.timeout,look_for_keys=False)
             self.chan = self.ssh.invoke_shell()
             self.ssh_out = self.chan.makefile('rb', self.recv_buf)
 
@@ -153,8 +171,8 @@ class CommandRunner(object):
 
 
 class AristaCommandRunner(CommandRunner):
-    def __init__(self, user, pw, port, cmds, timeout=None, private_key=False):
-        super(AristaCommandRunner, self).__init__(user, pw, port, cmds, '^%s(?:\.ARISTA)?%s(?P<cmd>.*)', '\n', timeout, private_key)
+    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, private_key=False):
+        super(AristaCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^%s(?:\.ARISTA)?%s(?P<cmd>.*)', '\n', timeout, private_key)
         self.cmds = self._fix_cmds()
 
     def _fix_cmds(self):
@@ -165,16 +183,16 @@ class AristaCommandRunner(CommandRunner):
 
 
 class CiscoCommandRunner(CommandRunner):
-    def __init__(self, user, pw, port, cmds, timeout=None, private_key=False):
-        super(CiscoCommandRunner, self).__init__(user, pw, port, cmds, '^%s%s(?P<cmd>.*)', '\n', timeout, private_key)
+    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, private_key=False):
+        super(CiscoCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^%s%s(?P<cmd>.*)', '\n', timeout, private_key)
 
     def enter(self):
         self.exec_cmd('terminal length 0', False)
 
 
 class BrocadeCommandRunner(CommandRunner):
-    def __init__(self, user, pw, port, cmds, timeout=None):
-        super(BrocadeCommandRunner, self).__init__(user, pw, port, cmds, '^SSH@%s(?:\([\w-]*\))?%s(?P<cmd>.*)', '\r\n', timeout)
+    def __init__(self, user, pw, enablepw, port, cmds, timeout=None):
+        super(BrocadeCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^SSH@%s(?:\([\w-]*\))?%s(?P<cmd>.*)', '\r\n', timeout)
 
     def exit(self):
         self.chan.send('exit%s'%self.terminator)
@@ -188,14 +206,17 @@ class BrocadeCommandRunner(CommandRunner):
             pass
 
 class RuckusCommandRunner(CommandRunner):
-    def __init__(self, user, pw, port, cmds, timeout=None, private_key=False):
-        super(RuckusCommandRunner, self).__init__(user, pw, port, cmds, '^SSH@%s(?:\([\w-]*\))?%s(?P<cmd>.*)', '\n', timeout, private_key)
+    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, private_key=False):
+        super(RuckusCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^SSH@%s(?:\([\w-]*\))?%s(?P<cmd>.*)', '\n', timeout, private_key)
 
-    """
-    # This doesn't seem to work.  If we do this, we freeze during the output.
     def enter(self):
-        self.exec_cmd('skip', False)
-    """
+        # This doesn't seem to work.  If we do this, we freeze during the output.
+        # self.exec_cmd('skip', False)
+        #
+        if self.enablepw is not None:
+            mode = self.exec_cmd('show clock', keepMode=True, keepOutput=False)
+            if mode == '>':
+                self.exec_cmd("enable %s" % self.enablepw)
 
     def exit(self):
         self.chan.send('exit%s'%self.terminator)

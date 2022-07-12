@@ -15,10 +15,10 @@ class SwitchWidget(QtWidgets.QWidget):
     misplaced = pyqtSignal(str)
     updated   = pyqtSignal()
 
-    def __init__(self,switch,user=None,pw=None,parent=None):
+    def __init__(self,switch,user=None,pw=None,enablepw=None,parent=None):
         super(SwitchWidget,self).__init__(parent=parent)
         self.resize(600,700)
-        self._switch = PyQtSwitch(switch,user=user,pw=pw,parent=self)
+        self._switch = PyQtSwitch(switch,user=user,pw=pw,enablepw=enablepw,parent=self)
         self.updated.connect(self.refresh)
         self.switch_label = QtWidgets.QLabel(switch)
         title_font = QtGui.QFont()
@@ -202,11 +202,9 @@ class SwitchWidget(QtWidgets.QWidget):
 
 
 class PyQtSwitch(Switch):
-
-
-    def __init__(self,switchname,user='admin',pw=None,parent=None):
+    def __init__(self,switchname,user='admin',pw=None,enablepw=None,parent=None):
         self.parent = parent
-        super(PyQtSwitch,self).__init__(switchname,user=user,pw=pw,
+        super(PyQtSwitch,self).__init__(switchname,user=user,pw=pw,enablepw=enablepw,
                                         load_connections=False)
         
     def update(self):

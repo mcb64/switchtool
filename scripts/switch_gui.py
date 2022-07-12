@@ -27,6 +27,10 @@ def main():
     
     parser.add_argument("-p","--password",type=str,
                        help="Password for switch login")
+
+    parser.add_argument("-e","--enable",type=str,
+                       help="Password for enable mode")
+
     kwargs = vars(parser.parse_args())
     
     if not kwargs.get('switch'):
@@ -37,7 +41,8 @@ def main():
     app = QApplication(sys.argv)
     widget = switch_ui.SwitchWidget(kwargs['switch'],
                                     user=kwargs.get('user'),
-                                    pw=kwargs.get('password'))
+                                    pw=kwargs.get('password'),
+                                    enablepw=kwargs.get('enable'))
     widget.setWindowTitle(kwargs['switch'])
     widget.show()
     sys.exit(app.exec_())

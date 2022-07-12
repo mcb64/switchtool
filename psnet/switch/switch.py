@@ -48,6 +48,10 @@ class Switch(netconfig.host.Host):
               password will be requested in the terminal 
     :type  pw: str
 
+    :param enablepw: The enable password of the switch, if this is not specified, the
+              password will be requested in the terminal, if needed.
+    :type  enablepw: str
+
     :param type: The type of the switch; arista, brocade or cisco. If this not
                 selected the database of switches will queried using the
                 determine_type function.
@@ -70,7 +74,7 @@ class Switch(netconfig.host.Host):
               'ruckus'     : survey.RuckusSurveyer,
               'cisco'      : survey.CiscoSurveyer,
              }
-    def __init__(self,switch_name,user='admin',pw=None,
+    def __init__(self,switch_name,user='admin',pw=None,enablepw=None,
                  type=None,load_connections=True):
 
         self._nc   = netconfig.NetConfig()
@@ -96,6 +100,7 @@ class Switch(netconfig.host.Host):
             self._pw = getpass.getpass('Password for {:}: '.format(self._user))
         else:
             self._pw = pw
+        self._enablepw = enablepw
         
         #Load VLAN information
         if load_connections:
@@ -358,6 +363,7 @@ class Switch(netconfig.host.Host):
         #Run commands
         cmd = self._surveyer()._cmd_runner(self._user,
                                            self._pw,
+                                           self._enablepw,
                                            self._port,
                                            commands,
                                            timeout=self.timeout)
@@ -633,7 +639,7 @@ class Switch(netconfig.host.Host):
         except KeyError:
             raise ValueError('{:} is not a valid switch type'.format(self.type))
 
-        surveyer = survey_type(self._user,self._pw,
+        surveyer = survey_type(self._user,self._pw,self._enablepw,
                                port=self._port,
                                timeout=self.timeout)
         return surveyer
