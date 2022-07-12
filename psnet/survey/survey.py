@@ -66,6 +66,9 @@ class Surveyer(object):
         mac = self._mac_format.findall(raw_mac) 
         return dict([(j,utils.convert_eth(i)) for i,j in mac])
 
+    # Let's claim no one needs an enable command by default!
+    def check_mode(self, host):
+        return False
 
 class BrocadeSurveyer(Surveyer):
 
@@ -132,6 +135,14 @@ class RuckusSurveyer(Surveyer):
                         full_ports.append('/'.join(stack+[port])) 
             vlan_info[vlan] = full_ports
         return vlan_info
+
+    # Return True if we need to enable!
+    def check_mode(self, host):
+        cmdr  = self._cmd_runner(self.user,self.pw,self.enablepw,self.port,
+                                 ["show clock"],timeout=self.timeout)
+        cmdr.run(host)
+        return cmdr.mode == '>'
+        
 
 class CiscoSurveyer(Surveyer):
 

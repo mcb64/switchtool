@@ -83,6 +83,7 @@ class CommandRunner(object):
         self.ssh_out = None
         self.recv_buf = 8192
         self.chan = None
+        self.mode = ''
         self._config()
 
     def _config(self):
@@ -96,12 +97,11 @@ class CommandRunner(object):
     def exit(self):
         self.exec_cmd('exit', False)
 
-    def exec_cmd(self, cmd, keepOutput=True, keepMode=False):
+    def exec_cmd(self, cmd, keepOutput=True):
         seen_echo = False
         seen_prompt = False
         self.chan.send('%s%s'%(cmd, self.terminator))
         output = ''
-        mode = ''
         
         while not seen_echo:
             if self.chan.recv_ready():
@@ -109,12 +109,12 @@ class CommandRunner(object):
                 if keepOutput:
                     prompt_match = self.prompt_pattern.match(line.rstrip())
                     if prompt_match and prompt_match.group('cmd') == cmd:
-                        mode = prompt_match.group('mode')
+                        self.mode = prompt_match.group('mode')
                         seen_echo = True
                 else:
                     prompt_match = self.prompt_pattern.match(line)
                     if prompt_match:
-                        mode = prompt_match.group('mode')
+                        self.mode = prompt_match.group('mode')
                         seen_echo = True
 
         if keepOutput:
@@ -130,14 +130,12 @@ class CommandRunner(object):
                     else:
                         prompt_match = self.prompt_pattern.match(line)
                         if prompt_match:
-                            mode = prompt_match.group('mode')
+                            self.mode = prompt_match.group('mode')
                             seen_prompt = True
                         else:
                             output += line
         if keepOutput:
             return output
-        if keepMode:
-            return mode
 
     def run(self, host):
         """
@@ -214,8 +212,8 @@ class RuckusCommandRunner(CommandRunner):
         # self.exec_cmd('skip', False)
         #
         if self.enablepw is not None:
-            mode = self.exec_cmd('show clock', keepMode=True, keepOutput=False)
-            if mode == '>':
+            self.exec_cmd('show clock')
+            if self.mode == '>':
                 self.exec_cmd("enable %s" % self.enablepw)
 
     def exit(self):
