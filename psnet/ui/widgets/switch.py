@@ -176,7 +176,7 @@ class SwitchWidget(QtWidgets.QWidget):
                                      self._switch.subnets,
                                      parent=self) 
         if dialog.exec_():
-            port,vlan = dialog.current_move
+            port,vlan = dialog.current_move()
             self._switch.move_port(port,vlan)
 
     

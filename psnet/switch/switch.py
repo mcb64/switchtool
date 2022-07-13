@@ -102,9 +102,6 @@ class Switch(netconfig.host.Host):
             self._pw = pw
         self._enablepw = enablepw
         
-        if not enablepw and self._surveyer().check_mode(self.name):
-            self._enablepw = getpass.getpass('Enable password for {:}: '.format(self._user))
-
         
         #Load VLAN information
         if load_connections:
@@ -325,6 +322,10 @@ class Switch(netconfig.host.Host):
 
         :rtype: bool
         """
+        # This is a privileged command: do we need/have the enable password?
+        if not self._enablepw and self._surveyer().check_mode(self.name):
+            self._enablepw = getpass.getpass('Enable password for {:}: '.format(self._user))
+        
         commands = ['config terminal']
         vlan_no  = str(vlan_no)
 
@@ -370,7 +371,8 @@ class Switch(netconfig.host.Host):
                                            self._enablepw,
                                            self._port,
                                            commands,
-                                           timeout=self.timeout)
+                                           timeout=self.timeout,
+                                           priv=True)
         
         out_code,resp = cmd.run(self.name)
         module_logger.info('Finished running switch commands')

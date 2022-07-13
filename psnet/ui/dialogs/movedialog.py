@@ -53,14 +53,13 @@ class MoveDialog(QtWidgets.QDialog):
                                  alignment=QtCore.Qt.AlignCenter)
         self.setLayout(self.total_lay)
             
-    @property
     def current_move(self):
         """
         Return the port and desired VLAN from the dialog
         """
         vlan = self.vlanBox.currentIndex()
         return (str(self.portBox.currentText()),
-                str(self.vlanBox.itemData(vlan).toPyObject()))
+                str(self.vlanBox.itemData(vlan)))
 
     @QtCore.pyqtSlot(str)
     def select_port(self,device):

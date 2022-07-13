@@ -18,7 +18,7 @@ LOG = logging.getLogger(LOG_CONF.get('logger_name', __name__))
 
 
 class TelnetCommandRunner(object):
-    def __init__(self, user, pw, enablepw, port, cmds, timeout=None):
+    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, priv=False):
         self.user = user
         self.pw = pw
         self.port = port
@@ -68,13 +68,14 @@ class TelnetCommandRunner(object):
             self.tn.close()
 
 class CommandRunner(object):
-    def __init__(self, user, pw, enablepw, port, cmds, prompt, terminator, timeout=None, private_key=False):
+    def __init__(self, user, pw, enablepw, port, cmds, prompt, terminator, timeout=None, private_key=False, priv=False):
         self.user = user
         self.pw = pw
         self.enablepw = enablepw
         self.port = port
         self.timeout = timeout
         self.private_key = private_key
+        self.priv = priv
         self.cmds = cmds or []
         self.page_cont_pattern = re.compile('--More--, next page: Space, next line: Return key, quit: Control-c\b[ \b]+\b(?P<data>.*)')
         self.prompt_temp = prompt
@@ -169,8 +170,8 @@ class CommandRunner(object):
 
 
 class AristaCommandRunner(CommandRunner):
-    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, private_key=False):
-        super(AristaCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^%s(?:\.ARISTA)?%s(?P<cmd>.*)', '\n', timeout, private_key)
+    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, private_key=False, priv=False):
+        super(AristaCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^%s(?:\.ARISTA)?%s(?P<cmd>.*)', '\n', timeout, private_key, priv)
         self.cmds = self._fix_cmds()
 
     def _fix_cmds(self):
@@ -181,8 +182,8 @@ class AristaCommandRunner(CommandRunner):
 
 
 class CiscoCommandRunner(CommandRunner):
-    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, private_key=False):
-        super(CiscoCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^%s%s(?P<cmd>.*)', '\n', timeout, private_key)
+    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, private_key=False, priv=False):
+        super(CiscoCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^%s%s(?P<cmd>.*)', '\n', timeout, private_key, priv)
 
     def enter(self):
         self.exec_cmd('terminal length 0', False)
@@ -204,14 +205,15 @@ class BrocadeCommandRunner(CommandRunner):
             pass
 
 class RuckusCommandRunner(CommandRunner):
-    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, private_key=False):
-        super(RuckusCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^SSH@%s(?:\([\w-]*\))?%s(?P<cmd>.*)', '\n', timeout, private_key)
+    def __init__(self, user, pw, enablepw, port, cmds, timeout=None, private_key=False, priv=False):
+        super(RuckusCommandRunner, self).__init__(user, pw, enablepw, port, cmds, '^SSH@%s(?:\([\w-]*\))?%s(?P<cmd>.*)', '\n', timeout, private_key, priv)
 
     def enter(self):
         # This doesn't seem to work.  If we do this, we freeze during the output.
-        # self.exec_cmd('skip', False)
+        #     self.exec_cmd('skip', False)
         #
-        if self.enablepw is not None:
+        if self.priv:
+            # We do this only to get the mode.
             self.exec_cmd('show clock')
             if self.mode == '>':
                 self.exec_cmd("enable %s" % self.enablepw)
