@@ -3,7 +3,7 @@
 #export PCDS_CONDA_VER=5.4.1
 #source /cds/group/pcds/pyps/conda/pcds_conda
 source ~mcbrowne/.conda/envs/mcb-test/etc/profile.d/conda.sh
-conda activate mcb-test
+conda activate base
 
 # Find full path of release directory.
 export RELDIR=`readlink -f $0`
