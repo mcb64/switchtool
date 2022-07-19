@@ -74,6 +74,7 @@ class Switch(netconfig.host.Host):
               'ruckus'     : survey.RuckusSurveyer,
               'cisco'      : survey.CiscoSurveyer,
              }
+
     def __init__(self,switch_name,user='admin',pw=None,enablepw=None,
                  type=None,load_connections=True):
 
@@ -131,6 +132,9 @@ class Switch(netconfig.host.Host):
             ports.extend(vlan.ports)
         return sorted(ports, key=self._portKey)
 
+    def find_vlans(self, plist):
+        return [self._portmap[p] for p in plist]
+
     @property
     def devices(self):
         """
@@ -172,12 +176,14 @@ class Switch(netconfig.host.Host):
         vlan = self._surveyer().show_vlan(self.name)
         
         #Organize
+        self._portmap = {}
         for vlan_no,ports in vlan.items():
             module_logger.debug('Found VLAN {:} on switch'.format(vlan_no))
             v = Vlan(vlan_no,ports,switch=self)
             self._vlan.append(v)
             setattr(self,self._vlan_alias.format(str(vlan_no)),v)
-       
+            for p in ports:
+                self._portmap[p] = vlan_no
 
     def find_connections(self):
         """
@@ -231,15 +237,13 @@ class Switch(netconfig.host.Host):
                  None is returned
         :rtype: str
         """
-        for vlan in self._vlan:
-            if port in vlan.ports:
-                num = vlan._vlan_no
-                module_logger.debug('Found {:} on VLAN {:}'.format(port,num))
-                return num
-
-        module_logger.debug('Unable to find port {:} on any VLAN'.format(port))
-        return None
-
+        try:
+            num = self._portmap[port]
+            module_logger.debug('Found {:} on VLAN {:}'.format(port,num))
+            return num
+        except:
+            module_logger.debug('Unable to find port {:} on any VLAN'.format(port))
+            return None
     
     def find_device(self,device):
         """

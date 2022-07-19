@@ -185,7 +185,8 @@ class SwitchWidget(QtWidgets.QWidget):
         
         switch = VlanWidget(parent=self)
         self.misplaced.connect(switch.highlight_device)
-        switch.add_ports(self._switch.ports)
+        plist = self._switch.ports
+        switch.add_ports(plist, self._switch.find_vlans(plist))
         d = self._switch.devices
         switch.add_devices(d)
         c = QtWidgets.QCompleter(d)
@@ -204,7 +205,8 @@ class SwitchWidget(QtWidgets.QWidget):
             self.misplaced.connect(vlan_table.highlight_device)
             self._vlan[vlan_no] = vlan_table
 
-            vlan_table.add_ports(vlan.ports)
+            plist = vlan.ports
+            vlan_table.add_ports(plist, self._switch.find_vlans(plist))
             vlan_table.add_devices(vlan._devices)
             vlan_table.add_unknown(vlan._unknown)
             vlan_table.resize(vlan_table.maximumSize())

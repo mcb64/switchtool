@@ -17,17 +17,17 @@ class VlanWidget(QTableWidget):
         self.setHorizontalHeaderLabels(self._column_names)
         self.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
 
-    def add_ports(self,ports):
+    def add_ports(self,ports,vlans):
         """
         Add a list of port information to the table
         """
         self.clearContents()
         self._ports = ports
-        for port in ports:
-            self.add_port(port)
+        for (i,port) in enumerate(ports):
+            self.add_port(port, vlans[i])
 #        self.resizeColumnsToContents()
     
-    def add_port(self,port):
+    def add_port(self,port,vlan):
         """
         Add a port to the table
         """
@@ -37,6 +37,7 @@ class VlanWidget(QTableWidget):
         new_row    = self.rowCount()
         self.insertRow(new_row)
         self.setItem(new_row,0,port_entry)
+        self.setItem(new_row,1,QTableWidgetItem(vlan))
 
 
     def add_devices(self,devices):
