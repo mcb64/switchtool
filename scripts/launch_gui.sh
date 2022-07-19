@@ -1,11 +1,12 @@
 #!/bin/bash
 
-#export PCDS_CONDA_VER=5.4.1
+#export PCDS_CONDA_VER=...
 #source /cds/group/pcds/pyps/conda/pcds_conda
-source ~mcbrowne/.conda/envs/mcb-test/etc/profile.d/conda.sh
-conda activate base
+source /cds/group/pcds/pyps/conda/dev_conda
 
-# Find full path of release directory.
+# Find full path of release directory.  This script is in
+# $RELDIR/scripts/launch_gui.sh, so we need to chop off the
+# last two path components.
 export RELDIR=`readlink -f $0`
 export RELDIR=`dirname $RELDIR`
 export RELDIR=`dirname $RELDIR`
