@@ -28,8 +28,8 @@ def main():
     parser.add_argument("-p","--password",type=str,
                        help="Password for switch login")
 
-    parser.add_argument("-e","--enable",type=str,
-                       help="Password for enable mode")
+    parser.add_argument("-t","--timeout",type=float,
+                       help="Timeout for switch refresh (hours, default 1)")
 
     kwargs = vars(parser.parse_args())
     
@@ -39,10 +39,13 @@ def main():
 
     #Launch GUI
     app = QApplication(sys.argv)
+    tout = kwargs.get('timeout')
+    if tout is None:
+        tout = 1
     widget = switch_ui.SwitchWidget(kwargs['switch'],
                                     user=kwargs.get('user'),
                                     pw=kwargs.get('password'),
-                                    enablepw=kwargs.get('enable'))
+                                    timeout=tout)
     widget.setWindowTitle(kwargs['switch'])
     widget.show()
     sys.exit(app.exec_())

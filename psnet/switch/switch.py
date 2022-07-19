@@ -1,11 +1,11 @@
 import os
 import sys
 import time
-import getpass
 import logging
 import simplejson
 from os import path,getenv
 
+from ..ui import dialogs
 from ..survey import survey
 from ..netconfig import netconfig
 
@@ -97,16 +97,14 @@ class Switch(netconfig.host.Host):
             self._user = user
 
         if not pw:
-            self._pw = getpass.getpass('Password for {:}: '.format(self._user))
+            self._pw = dialogs.passwddialog.getPassword('Password for {:}: '.format(self._user))
         else:
             self._pw = pw
         self._enablepw = enablepw
         
-        
         #Load VLAN information
         if load_connections:
             self.update()
-
 
     @property
     def subnets(self):
@@ -116,6 +114,12 @@ class Switch(netconfig.host.Host):
         subnets = [(vlan._vlan_no,vlan.subnet) for vlan in self._vlan]
         return sorted(subnets,key = lambda sub: int(sub[0]))
 
+    def _portKey(self, k):
+        l = [int(x) for x in k.split("/")]
+        s = 0
+        for x in l:
+            s = 1000 * s + x
+        return s
 
     @property
     def ports(self):
@@ -125,8 +129,7 @@ class Switch(netconfig.host.Host):
         ports = []
         for vlan in self._vlan:
             ports.extend(vlan.ports)
-        return sorted(ports)
-
+        return sorted(ports, key=self._portKey)
 
     @property
     def devices(self):
@@ -242,7 +245,7 @@ class Switch(netconfig.host.Host):
         """
         Find a device on the switch by its NetConfig name
 
-        :param device: The name of the deivce
+        :param device: The name of the device
         :type  device: str
 
         :return: A tuple of the VLAN the device is on, as well as the port. If
@@ -259,6 +262,36 @@ class Switch(netconfig.host.Host):
 
         module_logger.debug('Unable to find device {:} on any VLAN'.format(device))
         return None,None
+
+    def find_device_substr(self,device):
+        """
+        Find a device on the switch by its NetConfig name
+
+        :param device: A substring of the name of the device
+        :type  device: str
+
+        :return: A list of (device, vlan, port) tuples.  If an exact
+                 match is found, only this is returned, but if no exact
+                 matches are found, all matches are returned.  (An empty
+                 list is returned if there are no matches.)
+        :rtype: list
+        """
+        l = []
+        dl = len(device)
+        for vlan in self._vlan:
+            for d in vlan.devices:
+                if device in d:
+                    num = vlan._vlan_no
+                    port = vlan._devices[d]['port']
+                    module_logger.debug('Found {:} on VLAN {:} port '\
+                                        '{:}'.format(d,num,port))
+                    if device == d: # If it's an exact match, just return it!
+                        return [(d,num,port)]
+                    else:
+                        l.append((d,num,port))
+        if l == []:
+            module_logger.debug('Unable to find device {:} on any VLAN'.format(device))
+        return sorted(l, key=lambda sub: sub[0])
    
 
     def find_vlan_for_subnet(self,subnet):
@@ -324,7 +357,7 @@ class Switch(netconfig.host.Host):
         """
         # This is a privileged command: do we need/have the enable password?
         if not self._enablepw and self._surveyer().check_mode(self.name):
-            self._enablepw = getpass.getpass('Enable password for {:}: '.format(self._user))
+            self._enablepw = dialogs.passwddialog.getPassword('Enable password for {:}: '.format(self._user))
         
         commands = ['config terminal']
         vlan_no  = str(vlan_no)
