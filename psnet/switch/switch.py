@@ -11,27 +11,39 @@ from ..netconfig import netconfig
 
 module_logger = logging.getLogger(__name__)
 
+switch_types = {
+    'arista'     : survey.AristaSurveyer,
+    'brocade'    : survey.BrocadeSurveyer,
+    'ruckus'     : survey.RuckusSurveyer,
+    'cisco'      : survey.CiscoSurveyer,
+}
 
 CONFIG_DIR = path.join(getenv("RELDIR"), 'config')
 
 
-def determine_type(name):
+def determine_type(nc, name):
     """
     Return the type of the switch based on the list of switches kept in the
     CONFIG_DIR directory
 
+    :param nc: The netconfig information.
+    :type  name: netconfig.NetConfig
+
     :param name: The name of the switch
     :type  name: str
 
-    :return: The type of switch based on the stored list of switches/types
+    :return: The type of switch based on the netconfig description.
     """
-    files    = os.listdir(CONFIG_DIR)
-    for file in [f for f in files if 'list' in f]:
-        with open(path.join(CONFIG_DIR,file),'r') as list:
-            if name in list.read().split('\n'):
-                return file.split('-')[-1]
+    try:
+        n = nc.find_hosts(name, as_dict=True)[name]
+        d = n['description'].lower()
+        for s in switch_types.keys():
+            if s in d:
+                print("%s is a %s switch." % (name, s))
+                return s
+    except:
+        pass
     return None
-
 
 class Switch(netconfig.host.Host):
     """
@@ -68,12 +80,6 @@ class Switch(netconfig.host.Host):
     _vlan_alias = 'VLAN_{:}'
     _vlan    = []
     _user    = 'admin'
-    _types = {'arista'     : survey.AristaSurveyer,
-              'brocade'    : survey.BrocadeSurveyer,
-              'brocade_old': survey.BrocadeSurveyer,
-              'ruckus'     : survey.RuckusSurveyer,
-              'cisco'      : survey.CiscoSurveyer,
-             }
 
     def __init__(self,switch_name,user='admin',pw=None,enablepw=None,
                  type=None,load_connections=True):
@@ -81,7 +87,7 @@ class Switch(netconfig.host.Host):
         self._nc   = netconfig.NetConfig()
 
         if not type:
-            type = determine_type(switch_name)
+            type = determine_type(self._nc, switch_name)
             module_logger.info('No switch type supplied guessing '\
                                'that switch is type {:}'.format(type))
 
@@ -678,7 +684,7 @@ class Switch(netconfig.host.Host):
         Return survey object based on type attribute
         """
         try:
-            survey_type = self._types[self.type]
+            survey_type = switch_types[self.type]
         except KeyError:
             raise ValueError('{:} is not a valid switch type'.format(self.type))
 

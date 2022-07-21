@@ -164,5 +164,5 @@ class AristaSurveyer(Surveyer):
     _cmd_runner  = command.AristaCommandRunner 
 
     def __init__(self,user,pw,enablepw,port=22,timeout=None):
-        super(CiscoSurveyer,self).__init__(user,pw,enablepw,port=port,
-                                           timeout=timeout)
+        super(AristaSurveyer,self).__init__(user,pw,enablepw,port=port,
+                                            timeout=timeout)

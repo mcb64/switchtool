@@ -148,13 +148,18 @@ class CommandRunner(object):
 
         # The connect seems to fail a lot.  Let's see if we can catch this at all
         # and retry?
+        did_connect = False
         for i in range(5):
             try:
                 self.ssh.connect(host, self.port, self.user, self.pw,
                                  timeout=self.timeout,look_for_keys=False)
+                did_connect = True
                 break
             except:
                 print("SSH connect failed, retry %d!" % i)
+        if not did_connect:
+            print("SSH connect failed, aborting!")
+            sys.exit(0)
 
         try:
             self.chan = self.ssh.invoke_shell()
