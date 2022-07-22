@@ -18,7 +18,9 @@ class Surveyer(object):
         self.enablepw= enablepw
         self.port    = port
         self.timeout = timeout
-
+        self._vlan_cmd = ['show vlan']
+        self._mac_cmd  = ['show mac-address']
+        self._vlan_formatter = None
 
     def show_vlan(self,host,vlan_no=None):
         """
@@ -29,7 +31,7 @@ class Surveyer(object):
         vlan_no (str) - Number of vlan to be observed.
         """
         vlan_info = {}
-        cmd  = ['show vlan'] 
+        cmd  = self._vlan_cmd
         
         if vlan_no:
             cmd[0] = '{:} {:}'.format(cmd[0].rstrip('\n'),vlan_no) 
@@ -38,6 +40,8 @@ class Surveyer(object):
                                     cmd,timeout=self.timeout)
         #Parse output
         out_code,raw_vlan = cmdr.run(host)
+        if self._vlan_formatter is not None:
+            raw_vlan = self._vlan_formatter(raw_vlan)
         vlan = self._vlan_format.findall(raw_vlan)
         
         for vlan_no,raw_ports in vlan:
@@ -45,13 +49,12 @@ class Surveyer(object):
             vlan_info[vlan_no] = ports
         return vlan_info
 
-
     def show_mac(self,host,vlan_no=None):
         """
         Create a dictionary of MAC addresses found on each port.
         """
         mac_info = {}
-        cmd      = ['show mac-address']
+        cmd      = self._mac_cmd
         if vlan_no:
             cmd[0] = '{:} vlan {:}'.format(cmd[0].rstrip('\n'),vlan_no) 
         
@@ -61,6 +64,8 @@ class Surveyer(object):
                                     self.port,
                                     cmd,timeout=self.timeout)
         out_code,raw_mac = cmdr.run(host)
+        with open("am", "w") as f:
+            f.write(raw_mac)
 
         #Parse output
         mac = self._mac_format.findall(raw_mac) 
@@ -81,7 +86,6 @@ class BrocadeSurveyer(Surveyer):
         super(BrocadeSurveyer,self).__init__(user,pw,enablepw,port=port,
                                              timeout=timeout)
    
-    
     def show_vlan(self,host,vlan_no=None):
         ''' Python 2.7 :  for vlan,port_info in vlan_info.iteritems(): '''
         ''' Python 3.5 :  for vlan,port_info in vlan_info.items():     '''
@@ -158,11 +162,28 @@ class CiscoSurveyer(Surveyer):
 
 class AristaSurveyer(Surveyer):
 
-    _vlan_format = re.compile(r'([\d]+).+active[\s]+(.+)')
-    _port_format = re.compile(r'(Et[\d]{1:2})')
-    _mac_format  = re.compile(r' [\d]{3}[\s]+?(\S+)[\s]+?DYNAMIC[\s]+(.+)')
+    _vlan_format = re.compile(r'([\d]+).*active(.*)')
+    _port_format = re.compile(r'(Et[\d]{1,2})')
+    _mac_format  = re.compile(r' [\d]{3}[\s]+?(\S+)[\s]+?DYNAMIC[\s]+(\S+)')
     _cmd_runner  = command.AristaCommandRunner 
 
     def __init__(self,user,pw,enablepw,port=22,timeout=None):
         super(AristaSurveyer,self).__init__(user,pw,enablepw,port=port,
                                             timeout=timeout)
+        self._mac_cmd = ['show mac address-table']
+        self._vlan_formatter = self.__vlan_format
+
+    def __vlan_format(self, l1):
+        ll = l1.split("\n")
+        cont = False
+        l2 = ""
+        for l in ll:
+            if cont and len(l) > 0 and l[0] >= '0' and l[0] <= '9':
+                l2 += "\n"
+                cont = False
+            if len(l) > 0 and l[0] >= '0' and l[0] <= '9':
+                l2 += l.strip()
+                cont = True
+            elif cont:
+                l2 += ", " + l.strip()
+        return l2

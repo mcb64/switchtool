@@ -39,7 +39,7 @@ def determine_type(nc, name):
         d = n['description'].lower()
         for s in switch_types.keys():
             if s in d:
-                print("%s is a %s switch." % (name, s))
+                print("%s is a%s %s switch." % (name, "n" if s[0] in 'aeiou' else "", s))
                 return s
     except:
         pass
@@ -121,7 +121,10 @@ class Switch(netconfig.host.Host):
         subnets = [(vlan._vlan_no,vlan.subnet) for vlan in self._vlan]
         return sorted(subnets,key = lambda sub: int(sub[0]))
 
+    # This is either "EtXX" or "X/Y/Z".  Convert this to an int in order in either case.
     def _portKey(self, k):
+        if k[:2] == 'Et':
+            return int(k[2:])
         l = [int(x) for x in k.split("/")]
         s = 0
         for x in l:
